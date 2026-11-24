@@ -34,7 +34,7 @@
 .modes{display:flex;flex-wrap:wrap;gap:6px;justify-content:center;margin:10px 0 14px} .modes button{border:1px solid #ddd;background:#fff;padding:8px 11px;border-radius:999px;font-size:13px;cursor:pointer} .modes button.active{background:#111;color:#fff;border-color:#111}
 .bar{display:flex;gap:8px} input#txt{flex:1;height:48px;border:1px solid #ddd;border-radius:999px;padding:0 16px;font-size:16px;outline:none;background:#fff} input#txt:focus{border-color:#111} button#send{height:48px;padding:0 18px;border-radius:999px;background:#111;color:#fff;border:none;font-size:15px;font-weight:600;cursor:pointer;white-space:nowrap}
 .gaugeBox{margin-top:22px;background:#fff;border:1px solid #eee;border-radius:16px;padding:16px} .lvl{font-size:15px;font-weight:700;margin:0 0 8px} .track{height:12px;background:#eee;border-radius:999px;overflow:hidden;position:relative} .fill{height:100%;background:#111;width:2%;transition:width .4s} .marks{display:flex;justify-content:space-between;font-size:11px;color:#666;margin-top:8px} .marks b{color:#111}
-.stats{font-size:12px;color:#666;margin-top:10px;line-height:1.5} .msg{font-size:14px;margin-top:12px;min-height:20px;color:#222} .gen{margin-top:14px;background:#fff;border:1px solid #eee;border-radius:14px;padding:12px;font-size:14px;line-height:1.5;display:none} .gen b{display:block;margin-bottom:4px} .hint{font-size:12px;color:#888;text-align:center;margin-top:14px;line-height:1.5}
+.stats{font-size:12px;color:#666;margin-top:10px;line-height:1.5} .msg{font-size:14px;margin-top:12px;min-height:20px;color:#222} .gen{margin-top:14px;background:#fff;border:1px solid #eee;border-radius:14px;padding:12px;font-size:14px;line-height:1.5;display:none} .gen b{display:block;margin-bottom:4px} .hint{font-size:12px;color:#888;text-align:center;margin-top:14px;line-height:1.5} .saveRow{display:flex;gap:8px;justify-content:center;margin-top:12px} .saveRow button{padding:10px 14px;border-radius:999px;border:1px solid #111;background:#fff;font-size:13px;font-weight:600;cursor:pointer} .saveRow button.primary{background:#111;color:#fff} input#fileInput{display:none}
 </style>
 </head>
 <body>
@@ -43,23 +43,23 @@
 <p class="sub">Colle, elle apprend.</p>
 <div class="modes" id="modes">
 <button data-m="apprendre" class="active">Apprendre</button>
-<button data-m="discuter" class="">Discuter</button>
-<button data-m="regarder" class="">Regarder</button>
-<button data-m="generer" class="">Générer</button>
-<button data-m="traduire" class="">Traduire</button>
-<button data-m="coder" class="">Coder</button>
-<button data-m="resumer" class="">Résumer</button>
+<button data-m="discuter">Discuter</button>
+<button data-m="regarder">Regarder</button>
+<button data-m="generer">Générer</button>
+<button data-m="traduire">Traduire</button>
+<button data-m="coder">Coder</button>
+<button data-m="resumer">Résumer</button>
 </div>
 <div class="bar"><input id="txt" type="text" placeholder="Colle ton texte ici..." autocomplete="off"><button id="send">Envoyer</button></div>
-<div class="msg" id="msg">Mode : Apprendre</div>
-<div class="gen" id="gen" style="display: none;"><b id="genTitle">Elle a généré :</b><span id="genText"></span></div>
+<div class="msg" id="msg"></div>
+<div class="gen" id="gen"><b id="genTitle">Elle a généré :</b><span id="genText"></span></div>
 <div class="gaugeBox">
 <p class="lvl" id="lvl">Niveau 1 — Elle vient de naître</p>
 <div class="track"><div class="fill" id="fill" style="width: 10.42884%;"></div></div>
 <div class="marks"><span>Début</span><span><b>Te connaît</b></span><span><b>Sait générer</b></span><span>Meta AI • Claude • ChatGPT</span></div>
 <div class="stats" id="stats">Mots connus : <b>0</b> • Textes appris : <b>0</b> • Faits retenus : <b>0</b> • Corrections : <b>0</b> • Choses vues : <b>0</b> • Choses générées : <b>0</b><br>Niveau = faits + textes + corrections x2 + vocabulaire / 20. Vérifiable, pas inventé.</div>
 </div>
-<p class="hint">Elle apprend de tout ce que tu lui colles. Si elle n'apprend rien de nouveau, le niveau ne bouge pas.<br>Plus tard : elle regardera seule et générera seule. La base est déjà là.</p>
+<div class="saveRow"><button class="primary" id="btnSave">Sauvegarder ce qu’elle a appris</button><button id="btnRestore">Restaurer</button></div><input type="file" id="fileInput" accept=".json,application/json"><p id="saveMsg" style="text-align:center;font-size:12px;color:#222;min-height:16px;margin-top:8px"></p><p class="hint">Elle apprend de tout ce que tu lui colles. Si elle n'apprend rien de nouveau, le niveau ne bouge pas.<br>Plus tard : elle regardera seule et générera seule. La base est déjà là.</p>
 </div>
 <script>
 let mode='apprendre';
@@ -82,18 +82,17 @@ function learnText(text){
   let beforeFacts=data.facts;
   if(isCorrection){data.corrections++; data.facts++;}
   else if(ws.length>3){data.facts++;}
-  data.texts++; data.examples.push({t:text.slice(0,200),d:new Date().toISOString(),mode});
+  data.texts++; data.examples.push({t:text,d:new Date().toISOString(),mode});
   if(data.examples.length>200) data.examples=data.examples.slice(-200);
   save(); render();
   return {newWords, isCorrection};
 }
-function generateFrom(prompt){
-  let ws=words(prompt); let pool=Object.keys(data.vocab);
-  if(pool.length<10) return null;
-  let out=[];
-  for(let i=0;i<12;i++){ out.push(pool[Math.floor(Math.random()*pool.length)]); }
-  return out.join(' ') + '.';
-}
+
+
+const STOP = new Set(['cest','quoi','est','qu','ce','que','qui','un','une','le','la','les','de','des','du','dans','pour','avec','sur','donc','alors','comment','pourquoi','quand','ou','et','a','au','aux','en','par','plus','tres','pas','ne','je','tu','il','elle','nous','vous','ils','elles','mon','ma','mes','ton','ta','tes','son','sa','ses']);
+function keywordsFrom(text){ let ws=words(text).filter(w=>!STOP.has(w) && w.length>2); return ws; }
+function findSentenceFor(keyword){ keyword=keyword.toLowerCase(); for(let i=data.examples.length-1;i>=0;i--){ let txt=data.examples[i].t; let sentences=txt.split(/\.|\n/).map(s=>s.trim()).filter(s=>s.length>5); for(let s of sentences){ if(s.toLowerCase().includes(keyword)){ return s+'.'; } } } return null; }
+function generateFrom(prompt){ let kws=keywordsFrom(prompt); if(kws.length===0) return null; let s=findSentenceFor(kws[0]); if(s) return s; for(let k of kws.slice(1)){ let s2=findSentenceFor(k); if(s2) return s2; } return null; }
 document.querySelectorAll('#modes button').forEach(b=>{ b.onclick=()=>{ mode=b.dataset.m; document.querySelectorAll('#modes button').forEach(x=>x.classList.remove('active')); b.classList.add('active'); document.getElementById('msg').textContent='Mode : '+b.textContent; document.getElementById('gen').style.display='none'; }; });
 document.getElementById('send').onclick=()=>{
   let el=document.getElementById('txt'); let text=el.value.trim(); if(!text) return;
@@ -109,8 +108,9 @@ document.getElementById('send').onclick=()=>{
     if(!g){ msg.textContent='Je ne sais pas encore générer ça. Apprends-moi d’abord avec le mode Apprendre.'; genBox.style.display='none'; }
     else { data.generated++; save(); render(); msg.textContent='J’ai généré avec ce que j’ai appris.'; document.getElementById('genText').textContent=g; genBox.style.display='block'; }
   } else if(mode==='discuter'){
-    let ws=words(text); let found=data.examples.filter(e=>ws.some(w=>e.t.toLowerCase().includes(w))).slice(-1)[0];
-    if(found){ msg.textContent='D’après ce que j’ai appris : '+found.t.slice(0,160); } else { msg.textContent='Je ne sais pas encore. Colle-moi un texte sur ce sujet en mode Apprendre.'; }
+    let kws = keywordsFrom(text);
+    if(kws.length===0){ msg.textContent='Je ne sais pas encore.'; }
+    else { let s=findSentenceFor(kws[0]); if(s){ msg.textContent='D’après ce que j’ai appris : '+s; } else { msg.textContent='Je ne sais pas encore. Colle-moi un texte sur "'+kws[0]+'" en mode Apprendre.'; } }
     genBox.style.display='none';
   } else if(mode==='traduire'){
     let ws=words(text); let found=data.examples.filter(e=>e.t.toLowerCase().includes('tradu')||e.t.includes('=')||e.t.includes('->')).slice(-1)[0];
@@ -127,6 +127,36 @@ document.getElementById('send').onclick=()=>{
   el.value='';
 };
 document.getElementById('txt').addEventListener('keydown',e=>{ if(e.key==='Enter'){ document.getElementById('send').click(); }});
+
+// Sauvegarde : même si Safari efface, on peut restaurer
+function downloadBackup(){
+  let blob = new Blob([JSON.stringify(data)], {type:'application/json'});
+  let url = URL.createObjectURL(blob);
+  let a = document.createElement('a');
+  a.href = url; a.download = 'ia-sauvegarde.json';
+  document.body.appendChild(a); a.click(); a.remove();
+  URL.revokeObjectURL(url);
+  document.getElementById('saveMsg').textContent = 'Sauvegarde téléchargée. Mets-la dans Fichiers, ne la perds pas.';
+}
+document.getElementById('btnSave').onclick = downloadBackup;
+document.getElementById('btnRestore').onclick = ()=>{ document.getElementById('fileInput').click(); };
+document.getElementById('fileInput').addEventListener('change', (e)=>{
+  let file = e.target.files[0]; if(!file) return;
+  let reader = new FileReader();
+  reader.onload = ()=>{
+    try{
+      let imported = JSON.parse(reader.result);
+      if(imported && imported.vocab){ data = imported; save(); render(); document.getElementById('saveMsg').textContent = 'Restauré ! Niveau '+level()+' - '+Object.keys(data.vocab).length+' mots retrouvés.'; }
+      else document.getElementById('saveMsg').textContent = 'Ce fichier n’est pas une sauvegarde IA.';
+    }catch(err){ document.getElementById('saveMsg').textContent = 'Impossible de lire ce fichier.'; }
+  };
+  reader.readAsText(file);
+});
+// Sauvegarde auto dans 2 endroits pour résister à Safari
+function saveDouble(){ try{ localStorage.setItem('ia_data_v1', JSON.stringify(data)); localStorage.setItem('ia_backup_v1', JSON.stringify(data)); }catch(e){} }
+let _origSave = save;
+save = function(){ _origSave(); saveDouble(); };
+
 render();
 if('serviceWorker' in navigator){ navigator.serviceWorker.register('sw.js').catch(()=>{}); }
 </script>
