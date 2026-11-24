@@ -1,0 +1,16 @@
+{
+  "name": "IA",
+  "short_name": "IA",
+  "start_url": "index.html",
+  "display": "standalone",
+  "background_color": "#f6f6f7",
+  "theme_color": "#111111",
+  "icons": [
+    {
+      "src": "icon.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}
